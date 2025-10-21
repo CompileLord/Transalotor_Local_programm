@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Translator TTS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                DEFAULT: 'hsl(210, 40%, 50%)',
+                light: 'hsl(210, 40%, 95%)',
+                dark: 'hsl(210, 40%, 45%)',
+              },
+              secondary: {
+                DEFAULT: 'hsl(190, 60%, 50%)',
+                light: 'hsl(190, 60%, 95%)',
+                dark: 'hsl(190, 60%, 45%)',
+              },
+              background: {
+                light: 'hsl(0, 0%, 100%)',
+                dark: 'hsl(220, 15%, 12%)',
+              },
+              surface: {
+                light: 'hsl(0, 0%, 98%)',
+                dark: 'hsl(220, 15%, 18%)',
+              },
+              text: {
+                light: 'hsl(220, 10%, 20%)',
+                dark: 'hsl(0, 0%, 95%)',
+              },
+              subtle: {
+                light: 'hsl(220, 10%, 50%)',
+                dark: 'hsl(220, 10%, 60%)',
+              },
+            },
+          },
+        },
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4"
+  }
+}
+</script>
+</head>
+  <body class="bg-background-light dark:bg-background-dark">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

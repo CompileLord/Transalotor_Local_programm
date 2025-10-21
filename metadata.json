@@ -1,0 +1,5 @@
+{
+  "name": "Local Translator TTS",
+  "description": "A web application for local text translation and text-to-speech synthesis, designed to work offline. It allows users to translate text, listen to the translation, manage a history of operations, and configure TTS settings.",
+  "requestFramePermissions": []
+}
