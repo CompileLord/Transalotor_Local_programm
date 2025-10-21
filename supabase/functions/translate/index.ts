@@ -36,20 +36,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Use LibreTranslate API for local translation
-    // Note: In production, this should point to a local LibreTranslate instance
-    const translateApiUrl = Deno.env.get("LIBRETRANSLATE_URL") || "https://libretranslate.com/translate";
-    
+    const backendUrl = Deno.env.get("BACKEND_URL") || "http://localhost:8000";
+    const translateApiUrl = `${backendUrl}/api/translate`;
+
     const response = await fetch(translateApiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        q: text,
-        source: source_lang,
-        target: target_lang,
-        format: "text",
+        text,
+        source_lang,
+        target_lang,
       }),
     });
 
@@ -60,7 +58,7 @@ Deno.serve(async (req: Request) => {
     const data = await response.json();
 
     return new Response(
-      JSON.stringify({ translation: data.translatedText }),
+      JSON.stringify({ translation: data.translation }),
       {
         headers: {
           ...corsHeaders,

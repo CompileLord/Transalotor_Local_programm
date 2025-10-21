@@ -38,33 +38,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Map language codes to Kokoro TTS voices
-    const voiceMap: { [key: string]: string } = {
-      "en": "af_sarah",
-      "ru": "af_sarah", // Kokoro may not have Russian, fallback to English
-      "de": "af_sarah",
-      "fr": "af_sarah",
-      "es": "af_sarah",
-      "it": "af_sarah",
-      "ja": "af_sarah",
-    };
+    const backendUrl = Deno.env.get("BACKEND_URL") || "http://localhost:8000";
+    const ttsApiUrl = `${backendUrl}/api/tts`;
 
-    const selectedVoice = voice !== "default" ? voice : (voiceMap[lang] || "af_sarah");
-
-    // Use Kokoro TTS API
-    // Note: In production, this should point to a local Kokoro TTS instance
-    const kokoroApiUrl = Deno.env.get("KOKORO_TTS_URL") || "http://localhost:8880/tts";
-    
-    const response = await fetch(kokoroApiUrl, {
+    const response = await fetch(ttsApiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        text: text,
-        voice: selectedVoice,
-        speed: speed,
-        lang: lang,
+        text,
+        lang,
+        speed,
+        volume,
+        voice: voice !== "default" ? voice : undefined,
       }),
     });
 
@@ -72,10 +59,8 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Kokoro TTS API error: ${response.statusText}`);
     }
 
-    // Get the audio data as ArrayBuffer
     const audioBuffer = await response.arrayBuffer();
 
-    // Return the audio data directly
     return new Response(audioBuffer, {
       headers: {
         ...corsHeaders,
