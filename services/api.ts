@@ -1,8 +1,10 @@
 
 import type { Language, AvailableLanguages, HistoryItem, Settings, ApiError } from '../types';
 
-// --- MOCK DATA ---
-const MOCK_LANGUAGES: AvailableLanguages = {
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const SUPPORTED_LANGUAGES: AvailableLanguages = {
   translation: [
     { code: 'en', name: 'English' },
     { code: 'ru', name: 'Russian' },
@@ -11,12 +13,17 @@ const MOCK_LANGUAGES: AvailableLanguages = {
     { code: 'es', name: 'Spanish' },
     { code: 'it', name: 'Italian' },
     { code: 'ja', name: 'Japanese' },
+    { code: 'zh', name: 'Chinese' },
+    { code: 'ar', name: 'Arabic' },
+    { code: 'pt', name: 'Portuguese' },
   ],
   tts: [
     { code: 'en', name: 'English' },
     { code: 'ru', name: 'Russian' },
     { code: 'de', name: 'German' },
     { code: 'fr', name: 'French' },
+    { code: 'es', name: 'Spanish' },
+    { code: 'ja', name: 'Japanese' },
   ],
 };
 
@@ -41,13 +48,8 @@ let MOCK_HISTORY: HistoryItem[] = [
   },
 ];
 
-// --- MOCK API FUNCTIONS ---
-
-const simulateNetworkDelay = (ms: number) => new Promise(res => setTimeout(res, ms));
-
 export const getLanguages = async (): Promise<AvailableLanguages> => {
-  await simulateNetworkDelay(300);
-  return MOCK_LANGUAGES;
+  return SUPPORTED_LANGUAGES;
 };
 
 export const translateText = async (
@@ -55,66 +57,81 @@ export const translateText = async (
   source_lang: string,
   target_lang: string
 ): Promise<{ translation: string }> => {
-  await simulateNetworkDelay(800);
   if (!text) return { translation: '' };
-  const translation = `[${target_lang}] Mock translation for: "${text}"`;
-  return { translation };
-};
 
-// Generates a silent WAV file as a Blob URL for placeholder audio
-const generateSilentWav = (duration: number = 2): string => {
-  const sampleRate = 44100;
-  const numChannels = 1;
-  const numFrames = sampleRate * duration;
-  const buffer = new ArrayBuffer(44 + numFrames * 2);
-  const view = new DataView(buffer);
+  try {
+    const apiUrl = `${SUPABASE_URL}/functions/v1/translate`;
 
-  // RIFF header
-  writeString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + numFrames * 2, true);
-  writeString(view, 8, 'WAVE');
-  // "fmt " sub-chunk
-  writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  // "data" sub-chunk
-  writeString(view, 36, 'data');
-  view.setUint32(40, numFrames * 2, true);
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        source_lang,
+        target_lang,
+      }),
+    });
 
-  const blob = new Blob([view], { type: 'audio/wav' });
-  return URL.createObjectURL(blob);
-}
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Translation failed');
+    }
 
-const writeString = (view: DataView, offset: number, string: string) => {
-  for (let i = 0; i < string.length; i++) {
-    view.setUint8(offset + i, string.charCodeAt(i));
+    const data = await response.json();
+    return { translation: data.translation };
+  } catch (error: any) {
+    console.error('Translation error:', error);
+    throw new Error(error.message || 'Translation failed');
   }
-}
-
+};
 
 export const synthesizeSpeech = async (
   text: string,
   lang: string,
-  settings: Omit<Settings, 'ttsModel' | 'voice'> // Assuming backend handles model/voice selection based on settings
+  settings: Omit<Settings, 'ttsModel' | 'voice'>
 ): Promise<{ audioUrl: string }> => {
-  await simulateNetworkDelay(1500);
-  if (!MOCK_LANGUAGES.tts.some(l => l.code === lang)) {
-      throw new Error(`TTS for language "${lang}" is not supported.`);
+  if (!SUPPORTED_LANGUAGES.tts.some(l => l.code === lang)) {
+    throw new Error(`TTS for language "${lang}" is not supported.`);
   }
-  const audioUrl = generateSilentWav(text.length / 10); // Duration based on text length
-  
-  // Find and update history item
-  const historyItem = MOCK_HISTORY.find(item => item.translatedText === text);
-  if(historyItem) {
-    historyItem.audioUrl = audioUrl;
+
+  try {
+    const apiUrl = `${SUPABASE_URL}/functions/v1/kokoro-tts`;
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        lang,
+        speed: settings.speed,
+        volume: settings.volume,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'TTS synthesis failed' }));
+      throw new Error(error.error || 'TTS synthesis failed');
+    }
+
+    const audioBlob = await response.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+
+    const historyItem = MOCK_HISTORY.find(item => item.translatedText === text);
+    if (historyItem) {
+      historyItem.audioUrl = audioUrl;
+    }
+
+    return { audioUrl };
+  } catch (error: any) {
+    console.error('TTS error:', error);
+    throw new Error(error.message || 'TTS synthesis failed');
   }
-  
-  return { audioUrl };
 };
 
 export const getHistory = async (): Promise<HistoryItem[]> => {
